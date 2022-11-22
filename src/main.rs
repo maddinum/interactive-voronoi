@@ -91,13 +91,19 @@ fn event_loop(settings: &Settings) {
     let mut mx = 0.0;
     let mut my = 0.0;
 
+    let mut lines_only = settings.lines_only;
+
     while let Some(e) = events.next(&mut window) {
         touch_visualizer.event(window.size(), &e);
         if let Some(button) = e.release_args() {
             match button {
                 Button::Keyboard(key) => {
-                    if key == piston::input::keyboard::Key::N { dots.clear(); colors.clear(); }
-                    if key == piston::input::keyboard::Key::R { random_voronoi(&mut dots, &mut colors, settings.random_count); }
+                    match key {
+                        Key::N => { dots.clear(); colors.clear(); },
+                        Key::R => { random_voronoi(&mut dots, &mut colors, settings.random_count); },
+                        Key::L => { lines_only = ! lines_only; },
+                        _ => ()
+                    }
                 }
                 Button::Mouse(_) => {
                     let dot = [mx, my];
@@ -131,7 +137,7 @@ fn event_loop(settings: &Settings) {
                             colors.push(random_color());
                         }
 
-                        if settings.lines_only {
+                        if lines_only {
                             draw_lines_in_polygon(poly, &c, g);
                         } else {
                             draw_polygon(poly, &c, g, colors[i]);
