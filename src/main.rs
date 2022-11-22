@@ -67,6 +67,14 @@ fn random_color() -> [f32; 4] {
     [rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>(), 1.0]
 }
 
+fn recolor(dots: & Vec<[f64;2]>, colors: &mut Vec<[f32;4]>) {
+    colors.clear();
+
+    for _ in dots {
+        colors.push(random_color());
+    }
+}
+
 fn random_voronoi(dots: &mut Vec<[f64;2]>, colors: &mut Vec<[f32;4]>, num: usize) {
     dots.clear();
     colors.clear();
@@ -102,6 +110,7 @@ fn event_loop(settings: &Settings) {
                         Key::N => { dots.clear(); colors.clear(); },
                         Key::R => { random_voronoi(&mut dots, &mut colors, settings.random_count); },
                         Key::L => { lines_only = ! lines_only; },
+                        Key::C => { recolor(&dots, &mut colors); },
                         _ => ()
                     }
                 }
