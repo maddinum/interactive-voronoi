@@ -1,26 +1,9 @@
-extern crate piston;
-extern crate opengl_graphics;
-extern crate graphics;
-extern crate touch_visualizer;
-
-#[cfg(feature = "include_sdl2")]
-extern crate sdl2_window;
-
-extern crate getopts;
-extern crate voronoi;
-extern crate rand;
-extern crate serde_json;
-
 use touch_visualizer::TouchVisualizer;
 use opengl_graphics::{ GlGraphics, OpenGL };
 use graphics::{ Context, Graphics };
-use piston::window::{ Window, WindowSettings };
-use piston::input::*;
-use piston::event_loop::*;
-#[cfg(feature = "include_sdl2")]
-use sdl2_window::Sdl2Window as AppWindow;
+use piston_window::*;
 use voronoi::{voronoi, Point, make_polygons};
-use rand::Rng;
+use serde_json;
 
 static DEFAULT_WINDOW_HEIGHT: u32 = 720;
 static DEFAULT_WINDOW_WIDTH:  u32 = 1280;
@@ -64,7 +47,7 @@ fn no_dot_there_yet(dot: &[f64;2], dots: &Vec<[f64;2]>) -> bool {
 }
 
 fn random_point() -> [f64; 2] {
-    [rand::thread_rng().gen_range(0., DEFAULT_WINDOW_WIDTH as f64), rand::thread_rng().gen_range(0., DEFAULT_WINDOW_HEIGHT as f64)]
+    [rand::random::<f64>() * DEFAULT_WINDOW_WIDTH as f64, rand::random::<f64>() * DEFAULT_WINDOW_HEIGHT as f64]
 }
 
 fn random_color() -> [f32; 4] {
@@ -102,12 +85,15 @@ fn load_dots(json_file: &str) -> Vec<[f64;2]> {
 
 fn event_loop(settings: &Settings) {
     let opengl = OpenGL::V3_2;
-    let mut window: AppWindow = WindowSettings::new("Interactive Voronoi", [DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT])
-        .exit_on_esc(true).opengl(opengl).build().unwrap();
+    let mut window : PistonWindow = WindowSettings::new("Interactive Voronoi", [DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT])
+        .exit_on_esc(true)
+        .samples(16)
+        .graphics_api(opengl)
+        .build()
+        .unwrap_or_else(|e| { panic!("Failed to build PistonWindow: {}", e) });
 
     let ref mut gl = GlGraphics::new(opengl);
     let mut touch_visualizer = TouchVisualizer::new();
-    let mut events = Events::new(EventSettings::new().lazy(true));
     let mut dots = Vec::new();
     let mut colors = Vec::new();
 
@@ -121,7 +107,7 @@ fn event_loop(settings: &Settings) {
         recolor(&dots, &mut colors);
     }
 
-    while let Some(e) = events.next(&mut window) {
+    while let Some(e) = window.next() {
         touch_visualizer.event(window.size(), &e);
         if let Some(button) = e.release_args() {
             match button {
@@ -146,9 +132,9 @@ fn event_loop(settings: &Settings) {
                 _ => ()
             }
         };
-        e.mouse_cursor(|x, y| {
-            mx = x;
-            my = y;
+        e.mouse_cursor(|p| {
+            mx = p[0];
+            my = p[1];
         });
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, g| {
