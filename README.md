@@ -10,10 +10,11 @@ Original [Demo](https://www.youtube.com/watch?v=5uBe5CkFXlM) version 0.1.0 from 
 Command line arguments:
 * You can use `-l` to draw lines only, no polygons.
 * You can use `-r` to control the number of random dots that appear when you press R.
-* You can use `-j` to load a list of points as a json array
+* You can use `-j` to load a list of points as a json array.
 
 Interactive keys:
 * Press `N` to clear the screen.
 * Press `R` to get _n_ random dots (default 50).
-* Press `L` to toggle between wireframe and polygon view
-* Press `S` to dump current points to console
+* Press `L` to toggle between wireframe and polygon view.
+* Press `C` to randomly change polygon colors.
+* Press `S` to dump current points to console.

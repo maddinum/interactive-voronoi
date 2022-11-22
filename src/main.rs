@@ -25,7 +25,7 @@ fn main() {
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(err) => { 
-            println!("{}\n{}", opts.usage("Usage: interactive-voronoi [OPTIONS]"), err.to_string()); 
+            println!("{}\n{}", help_message(&opts), err.to_string());
             return; 
         }
     };
@@ -41,6 +41,21 @@ fn main() {
 
     event_loop(&settings);
 
+}
+
+fn help_message(opts: &getopts::Options) -> String {
+    let mut msg = opts.usage("Usage: interactive-voronoi [OPTIONS]");
+    let interactive_help = "\n\
+Interactive keys:\n\
+\tPress `N` to clear the screen.\n\
+\tPress `R` to get [RANDOMCOUNT] random dots (default 50).\n\
+\tPress `L` to toggle between wireframe and polygon view.\n\
+\tPress `C` to randomly change polygon colors.\n\
+\tPress `S` to dump current points to console.\n\
+";
+
+    msg.push_str(interactive_help);
+    msg
 }
 
 fn no_dot_there_yet(dot: &[f64;2], dots: &Vec<[f64;2]>) -> bool {
@@ -105,8 +120,7 @@ fn event_loop(settings: &Settings) {
     let mut dots = Vec::new();
     let mut colors = Vec::new();
 
-    let mut mx = 0.0;
-    let mut my = 0.0;
+    let mut mp = [0.0,0.0];
 
     let mut lines_only = settings.lines_only;
 
@@ -117,6 +131,7 @@ fn event_loop(settings: &Settings) {
 
     while let Some(e) = window.next() {
         touch_visualizer.event(window.size(), &e);
+        e.mouse_cursor(|p|{ mp = p });
         if let Some(button) = e.release_args() {
             match button {
                 Button::Keyboard(key) => {
@@ -130,36 +145,31 @@ fn event_loop(settings: &Settings) {
                     }
                 }
                 Button::Mouse(_) => {
-                    let dot = [mx, my];
                     // Two points at the same place lead to a problem in rust_voronoi
-                    if no_dot_there_yet(&dot, &dots) {
-                        dots.push(dot);
+                    if no_dot_there_yet(&mp, &dots) {
+                        dots.push(mp);
                         colors.push(random_color());
                     }
                 },
                 _ => ()
             }
         };
-        e.mouse_cursor(|p| {
-            mx = p[0];
-            my = p[1];
-        });
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, g| {
                 graphics::clear([1.0; 4], g);
                 let mut dt = Delaunay2D::new(
                     (DEFAULT_WINDOW_WIDTH as f64 / 2.0, DEFAULT_WINDOW_HEIGHT as f64 / 2.0), 
-                    std::cmp::max(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)  as f64);
+                    std::f64::consts::SQRT_2 * std::cmp::max(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT) as f64);
 
                 for [x,y] in &dots {
                     dt.add_point((x.to_owned(), y.to_owned()));
                 }
-                let (points, mut regions) = dt.export_voronoi_regions();
+                let (points, regions) = dt.export_voronoi_regions();
                 // regions.sort(); // for a seizure inducing trip - very flashy
                 // TODO: draw on change only: {changed dots, window resize}
 
                 for (i, region) in regions.iter().enumerate() {
-                    let mut poly: Vec<Point> = region.iter().map(|index| { points[*index] }).collect();
+                    let poly: Vec<Point> = region.iter().map(|index| { points[*index] }).collect();
 
                     if lines_only {
                         draw_lines_in_polygon(&poly, &c, g);
