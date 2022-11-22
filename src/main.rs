@@ -9,6 +9,7 @@ extern crate sdl2_window;
 extern crate getopts;
 extern crate voronoi;
 extern crate rand;
+extern crate serde_json;
 
 use touch_visualizer::TouchVisualizer;
 use opengl_graphics::{ GlGraphics, OpenGL };
@@ -26,7 +27,8 @@ static DEFAULT_WINDOW_WIDTH:  u32 = 1280;
 
 struct Settings {
     lines_only: bool,
-    random_count: usize
+    random_count: usize,
+    json_path: Option<String>
 }
 
 fn main() {
@@ -34,6 +36,7 @@ fn main() {
     let mut opts = getopts::Options::new();
     opts.optflag("l", "lines_only", "Don't color polygons, just outline them");
     opts.optopt("r", "random_count", "On keypress \"R\", put this many random points on-screen", "RANDOMCOUNT");
+    opts.optopt("j", "json_dots", "load dots from json file", "JSON");
     let matches = opts.parse(&args[1..]).expect("Failed to parse args");
 
     let settings = Settings{
@@ -41,7 +44,8 @@ fn main() {
         random_count: match matches.opt_str("r") {
             None => { 50 },
             Some(s) => { s.parse().expect("Random count of bad format") }
-        }
+        },
+        json_path: matches.opt_str("j")
     };
 
     event_loop(&settings);
@@ -85,6 +89,17 @@ fn random_voronoi(dots: &mut Vec<[f64;2]>, colors: &mut Vec<[f32;4]>, num: usize
     }
 }
 
+fn save_current_dots(dots: & Vec<[f64;2]>) {
+    let js = serde_json::to_string(dots).expect("Could not serialize dots");
+    println!("{}", js);
+}
+
+fn load_dots(json_file: &str) -> Vec<[f64;2]> {
+    let js = std::fs::read_to_string(json_file).expect("Can't read provided json file");
+    let dots: Vec<[f64;2]> = serde_json::from_str(&js).expect("Can't convert json to dots");
+    dots
+}
+
 fn event_loop(settings: &Settings) {
     let opengl = OpenGL::V3_2;
     let mut window: AppWindow = WindowSettings::new("Interactive Voronoi", [DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT])
@@ -101,6 +116,11 @@ fn event_loop(settings: &Settings) {
 
     let mut lines_only = settings.lines_only;
 
+    if let Some(jsf) = settings.json_path.as_ref() {
+        dots = load_dots(jsf);
+        recolor(&dots, &mut colors);
+    }
+
     while let Some(e) = events.next(&mut window) {
         touch_visualizer.event(window.size(), &e);
         if let Some(button) = e.release_args() {
@@ -111,6 +131,7 @@ fn event_loop(settings: &Settings) {
                         Key::R => { random_voronoi(&mut dots, &mut colors, settings.random_count); },
                         Key::L => { lines_only = ! lines_only; },
                         Key::C => { recolor(&dots, &mut colors); },
+                        Key::S => { save_current_dots(&dots); },
                         _ => ()
                     }
                 }

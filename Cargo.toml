@@ -16,6 +16,7 @@ piston2d-touch_visualizer = "0.8.0"
 voronoi = "0.1.4"
 rand = "0.3"
 getopts = "0.2.15"
+serde_json = "1.0"
 
 [dependencies.pistoncore-sdl2_window]
 version = "0.47.0"
