@@ -2,11 +2,13 @@ use touch_visualizer::TouchVisualizer;
 use opengl_graphics::{ GlGraphics, OpenGL };
 use graphics::{ Context, Graphics };
 use piston_window::*;
-use voronoi::{voronoi, Point, make_polygons};
+use delaunay2d::Delaunay2D;
 use serde_json;
 
 static DEFAULT_WINDOW_HEIGHT: u32 = 720;
 static DEFAULT_WINDOW_WIDTH:  u32 = 1280;
+
+type Point = (f64, f64);
 
 struct Settings {
     lines_only: bool,
@@ -139,25 +141,24 @@ fn event_loop(settings: &Settings) {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, g| {
                 graphics::clear([1.0; 4], g);
-                let mut vor_pts = Vec::new();
-                for d in &dots {
-                    vor_pts.push(Point::new(d[0], d[1]));
-                }
-                if vor_pts.len() > 0 {
-                    let vor_diagram = voronoi(vor_pts, 
-                        std::cmp::max(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT) as f64);
-                    let vor_polys = make_polygons(&vor_diagram);
-                    
-                    for (i, poly) in vor_polys.iter().enumerate() {
-                        if colors.len()-1 < i {
-                            colors.push(random_color());
-                        }
+                let mut dt = Delaunay2D::new(
+                    (DEFAULT_WINDOW_WIDTH as f64 / 2.0, DEFAULT_WINDOW_HEIGHT as f64 / 2.0), 
+                    std::cmp::max(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)  as f64);
 
-                        if lines_only {
-                            draw_lines_in_polygon(poly, &c, g);
-                        } else {
-                            draw_polygon(poly, &c, g, colors[i]);
-                        }
+                for [x,y] in &dots {
+                    dt.add_point((x.to_owned(), y.to_owned()));
+                }
+                let (points, mut regions) = dt.export_voronoi_regions();
+                // regions.sort(); // for a seizure inducing trip - very flashy
+                // TODO: draw on change only: {changed dots, window resize}
+
+                for (i, region) in regions.iter().enumerate() {
+                    let mut poly: Vec<Point> = region.iter().map(|index| { points[*index] }).collect();
+                    
+                    if lines_only {
+                        draw_lines_in_polygon(&poly, &c, g);
+                    } else {
+                        draw_polygon(&poly, &c, g, colors[i]);
                     }
                 }
                 for d in &dots {
@@ -181,7 +182,7 @@ fn draw_lines_in_polygon<G: Graphics>(
         graphics::line(
             color,
             2.0,
-            [poly[i].x.into(), poly[i].y.into(), poly[i+1].x.into(), poly[i+1].y.into()],
+            [poly[i].0.into(), poly[i].1.into(), poly[i+1].0.into(), poly[i+1].1.into()],
             c.transform,
             g
         )
@@ -197,7 +198,7 @@ fn draw_polygon<G: Graphics>(
     let mut polygon_points: Vec<[f64; 2]> = Vec::new();
 
     for p in poly {
-        polygon_points.push([p.x.into(), p.y.into()]);
+        polygon_points.push([p.0.into(), p.1.into()]);
     }
 
     graphics::polygon(
