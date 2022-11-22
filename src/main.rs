@@ -21,8 +21,8 @@ use sdl2_window::Sdl2Window as AppWindow;
 use voronoi::{voronoi, Point, make_polygons};
 use rand::Rng;
 
-static DEFAULT_WINDOW_HEIGHT: u32 = 600;
-static DEFAULT_WINDOW_WIDTH:  u32 = 600;
+static DEFAULT_WINDOW_HEIGHT: u32 = 720;
+static DEFAULT_WINDOW_WIDTH:  u32 = 1280;
 
 struct Settings {
     lines_only: bool,
@@ -60,7 +60,7 @@ fn no_dot_there_yet(dot: &[f64;2], dots: &Vec<[f64;2]>) -> bool {
 }
 
 fn random_point() -> [f64; 2] {
-    [rand::thread_rng().gen_range(0., DEFAULT_WINDOW_HEIGHT as f64), rand::thread_rng().gen_range(0., DEFAULT_WINDOW_WIDTH as f64)]
+    [rand::thread_rng().gen_range(0., DEFAULT_WINDOW_WIDTH as f64), rand::thread_rng().gen_range(0., DEFAULT_WINDOW_HEIGHT as f64)]
 }
 
 fn random_color() -> [f32; 4] {
@@ -79,7 +79,7 @@ fn random_voronoi(dots: &mut Vec<[f64;2]>, colors: &mut Vec<[f32;4]>, num: usize
 
 fn event_loop(settings: &Settings) {
     let opengl = OpenGL::V3_2;
-    let mut window: AppWindow = WindowSettings::new("Interactive Voronoi", [DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH])
+    let mut window: AppWindow = WindowSettings::new("Interactive Voronoi", [DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT])
         .exit_on_esc(true).opengl(opengl).build().unwrap();
 
     let ref mut gl = GlGraphics::new(opengl);
@@ -122,7 +122,8 @@ fn event_loop(settings: &Settings) {
                     vor_pts.push(Point::new(d[0], d[1]));
                 }
                 if vor_pts.len() > 0 {
-                    let vor_diagram = voronoi(vor_pts, DEFAULT_WINDOW_WIDTH as f64);
+                    let vor_diagram = voronoi(vor_pts, 
+                        std::cmp::max(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT) as f64);
                     let vor_polys = make_polygons(&vor_diagram);
                     
                     for (i, poly) in vor_polys.iter().enumerate() {
