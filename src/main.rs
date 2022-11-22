@@ -22,7 +22,13 @@ fn main() {
     opts.optflag("l", "lines_only", "Don't color polygons, just outline them");
     opts.optopt("r", "random_count", "On keypress \"R\", put this many random points on-screen", "RANDOMCOUNT");
     opts.optopt("j", "json_dots", "load dots from json file", "JSON");
-    let matches = opts.parse(&args[1..]).expect("Failed to parse args");
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(err) => { 
+            println!("{}\n{}", opts.usage("Usage: interactive-voronoi [OPTIONS]"), err.to_string()); 
+            return; 
+        }
+    };
 
     let settings = Settings{
         lines_only: matches.opt_present("l"),
@@ -154,7 +160,7 @@ fn event_loop(settings: &Settings) {
 
                 for (i, region) in regions.iter().enumerate() {
                     let mut poly: Vec<Point> = region.iter().map(|index| { points[*index] }).collect();
-                    
+
                     if lines_only {
                         draw_lines_in_polygon(&poly, &c, g);
                     } else {
