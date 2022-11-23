@@ -119,6 +119,7 @@ fn event_loop(settings: &Settings) {
     let mut touch_visualizer = TouchVisualizer::new();
     let mut dots = Vec::new();
     let mut colors = Vec::new();
+    let mut poly_list: Vec<Vec<Point>> = Vec::new();
 
     let mut mp = [0.0,0.0];
 
@@ -127,6 +128,7 @@ fn event_loop(settings: &Settings) {
     if let Some(jsf) = settings.json_path.as_ref() {
         dots = load_dots(jsf);
         recolor(&dots, &mut colors);
+        poly_list = update_polygons(&dots);
     }
 
     while let Some(e) = window.next() {
@@ -136,8 +138,8 @@ fn event_loop(settings: &Settings) {
             match button {
                 Button::Keyboard(key) => {
                     match key {
-                        Key::N => { dots.clear(); colors.clear(); },
-                        Key::R => { random_voronoi(&mut dots, &mut colors, settings.random_count); },
+                        Key::N => { dots.clear(); colors.clear(); poly_list.clear(); },
+                        Key::R => { random_voronoi(&mut dots, &mut colors, settings.random_count); poly_list = update_polygons(&dots); },
                         Key::L => { lines_only = ! lines_only; },
                         Key::C => { recolor(&dots, &mut colors); },
                         Key::S => { save_current_dots(&dots); },
@@ -149,6 +151,8 @@ fn event_loop(settings: &Settings) {
                     if no_dot_there_yet(&mp, &dots) {
                         dots.push(mp);
                         colors.push(random_color());
+
+                        poly_list = update_polygons(&dots);
                     }
                 },
                 _ => ()
@@ -157,20 +161,10 @@ fn event_loop(settings: &Settings) {
         if let Some(args) = e.render_args() {
             gl.draw(args.viewport(), |c, g| {
                 graphics::clear([1.0; 4], g);
-                let mut dt = Delaunay2D::new(
-                    (DEFAULT_WINDOW_WIDTH as f64 / 2.0, DEFAULT_WINDOW_HEIGHT as f64 / 2.0), 
-                    std::f64::consts::SQRT_2 * std::cmp::max(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT) as f64);
 
-                for [x,y] in &dots {
-                    dt.add_point((x.to_owned(), y.to_owned()));
-                }
-                let (points, regions) = dt.export_voronoi_regions();
-                // regions.sort(); // for a seizure inducing trip - very flashy
                 // TODO: draw on change only: {changed dots, window resize}
 
-                for (i, region) in regions.iter().enumerate() {
-                    let poly: Vec<Point> = region.iter().map(|index| { points[*index] }).collect();
-
+                for (i, poly) in poly_list.iter().enumerate() {
                     if lines_only {
                         draw_lines_in_polygon(&poly, &c, g);
                     } else {
@@ -184,6 +178,22 @@ fn event_loop(settings: &Settings) {
         }
     } 
 
+}
+
+fn update_polygons(dots: & Vec<[f64;2]>) -> Vec<Vec<Point>> {
+    let mut dt = Delaunay2D::new(
+        (DEFAULT_WINDOW_WIDTH as f64 / 2.0, DEFAULT_WINDOW_HEIGHT as f64 / 2.0), 
+        std::f64::consts::SQRT_2 * std::cmp::max(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT) as f64);
+    for [x,y] in dots {
+        dt.add_point((x.to_owned(), y.to_owned()));
+    }
+    let (points, regions) = dt.export_voronoi_regions();
+
+    regions.iter().map(|region| { 
+        region.iter().map(|index| { 
+            points[*index] 
+        }).collect::<Vec<Point>>() 
+    }).collect::<Vec<Vec<Point>>>()
 }
 
 fn draw_lines_in_polygon<G: Graphics>(
