@@ -12,7 +12,6 @@ path = "src/main.rs"
 
 [dependencies]
 piston = "0.53"
-piston2d-opengl_graphics = "0.82"
 piston2d-graphics = "0.43"
 piston2d-touch_visualizer = "0.33"
 piston_window = "0.127"

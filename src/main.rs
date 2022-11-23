@@ -1,5 +1,4 @@
 use touch_visualizer::TouchVisualizer;
-use opengl_graphics::{ GlGraphics, OpenGL };
 use graphics::{ Context, Graphics };
 use piston_window::*;
 use delaunay2d::Delaunay2D;
@@ -115,7 +114,6 @@ fn event_loop(settings: &Settings) {
         .build()
         .unwrap_or_else(|e| { panic!("Failed to build PistonWindow: {}", e) });
 
-    let ref mut gl = GlGraphics::new(opengl);
     let mut touch_visualizer = TouchVisualizer::new();
     let mut dots = Vec::new();
     let mut colors = Vec::new();
@@ -131,6 +129,7 @@ fn event_loop(settings: &Settings) {
         poly_list = update_polygons(&dots);
     }
 
+    window.set_lazy(true);
     while let Some(e) = window.next() {
         touch_visualizer.event(window.size(), &e);
         e.mouse_cursor(|p|{ mp = p });
@@ -158,24 +157,20 @@ fn event_loop(settings: &Settings) {
                 _ => ()
             }
         };
-        if let Some(args) = e.render_args() {
-            gl.draw(args.viewport(), |c, g| {
-                graphics::clear([1.0; 4], g);
+        window.draw_2d(&e, |c, g, _| {
+            clear(color::WHITE, g);
 
-                // TODO: draw on change only: {changed dots, window resize}
-
-                for (i, poly) in poly_list.iter().enumerate() {
-                    if lines_only {
-                        draw_lines_in_polygon(&poly, &c, g);
-                    } else {
-                        draw_polygon(&poly, &c, g, colors[i]);
-                    }
+            for (i, poly) in poly_list.iter().enumerate() {
+                if lines_only {
+                    draw_lines_in_polygon(&poly, &c, g);
+                } else {
+                    draw_polygon(&poly, &c, g, colors[i]);
                 }
-                for d in &dots {
-                    draw_ellipse(&d, &c, g);
-                }
-            });
-        }
+            }
+            for d in &dots {
+                draw_ellipse(&d, &c, g);
+            }
+        });
     } 
 
 }
